@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>出席ランチャー</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<style>
+:root{--bg:#E9EEF1;--panel:#fff;--ink:#14202B;--mute:#5B6B78;--line:#D3DCE2;--accent:#1F5FBF;--onaccent:#fff;--now:#D9E6F8;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0F171E;--panel:#182430;--ink:#E8EEF3;--mute:#93A4B2;--line:#2A3946;--accent:#6FA3F0;--onaccent:#0F171E;--now:#1F3350}}
+:root[data-theme="dark"]{--bg:#0F171E;--panel:#182430;--ink:#E8EEF3;--mute:#93A4B2;--line:#2A3946;--accent:#6FA3F0;--onaccent:#0F171E;--now:#1F3350}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Zen Kaku Gothic New","Noto Sans JP","Hiragino Sans",sans-serif;font-size:16px;line-height:1.6}
+main{max-width:480px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:0}
+.head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}
+.date{color:var(--mute);font-size:14px}
+.tabs{display:flex;gap:8px;margin-bottom:16px}
+.tabs button{flex:1;padding:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:10px;font:inherit;font-weight:700}
+.tabs button[aria-pressed="true"]{background:var(--accent);color:var(--onaccent);border-color:var(--accent)}
+.hero{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px;text-align:center}
+.tag{color:var(--mute);font-size:14px;margin:0}
+.name{font-size:20px;font-weight:700;margin:2px 0 0}
+.room{font-size:64px;font-weight:700;line-height:1.1;margin:4px 0 12px;letter-spacing:.02em;color:var(--accent)}
+.qr{background:#fff;padding:12px;border-radius:10px;display:inline-block;line-height:0}
+.qr svg{width:200px;height:200px}
+.go{display:block;margin-top:16px;padding:16px;border-radius:12px;background:var(--accent);color:var(--onaccent);font-weight:700;font-size:18px;text-decoration:none}
+.go:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+h2{font-size:16px;margin:24px 0 8px}
+.row{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:8px;color:var(--ink);font:inherit}
+.row[aria-current="true"]{background:var(--now);border-color:var(--accent)}
+.row .p{min-width:44px;font-weight:700}
+.row .n{flex:1}
+.row .r{color:var(--mute)}
+.del{border:0;background:none;color:var(--mute);font:inherit;padding:4px 8px;text-decoration:underline}
+form{display:grid;grid-template-columns:1fr 1fr;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+form .full{grid-column:1/-1}
+label{display:block;font-size:13px;color:var(--mute)}
+input,select{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
+.add{grid-column:1/-1;padding:12px;border:0;border-radius:10px;background:var(--accent);color:var(--onaccent);font:inherit;font-weight:700}
+.empty{color:var(--mute);text-align:center;padding:24px 8px}
+details{margin-top:24px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+summary{font-weight:700}
+.times{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+</style>
+</head>
+<body>
+<main>
+  <div class="head"><h1>出席ランチャー</h1><span class="date" id="date"></span></div>
+  <div class="tabs">
+    <button id="t-today" aria-pressed="true">今日</button>
+    <button id="t-table" aria-pressed="false">時間割</button>
+  </div>
+  <div id="view"></div>
+</main>
+<script>
+var BASE="https://attendance.is.chibatech.ac.jp/attendance/class_room/";
+var DAYS=["日","月","火","水","木","金","土"];
+var PRESET=[
+{id:"p1",name:"デジタル回路",day:1,period:2,span:2,room:"1102"},
+{id:"p2",name:"電子回路及び演習１",day:1,period:5,span:3,room:"8108"},
+{id:"p3",name:"課題探究セミナー",day:2,period:3,span:2,room:"7203"},
+{id:"p4",name:"量子力学基礎",day:2,period:6,span:2,room:"8208"},
+{id:"p5",name:"電気回路及び演習２",day:3,period:5,span:3,room:"5202"},
+{id:"p6",name:"電子デバイス及び演習１",day:5,period:2,span:3,room:"8206"},
+{id:"p7",name:"電気磁気学及び演習１",day:5,period:6,span:3,room:"5102"}];
+var S={classes:PRESET,times:["09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00"],sel:null,view:"today"};
+try{var raw=localStorage.getItem("attend-v2");if(raw){var L=JSON.parse(raw);S.classes=L.classes||[];S.times=L.times||S.times}}catch(e){}
+function save(){try{localStorage.setItem("attend-v2",JSON.stringify({classes:S.classes,times:S.times}))}catch(e){}}
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+function start(p){var t=S.times[p-1].split(":");return +t[0]*60+ +t[1]}
+function url(room){return BASE+encodeURIComponent(room)}
+function qrSvg(u){var q=qrcode(0,"M");q.addData(u);q.make();return q.createSvgTag({cellSize:4,margin:0,scalable:true})}
+function pick(list){
+  var d=new Date(),m=d.getHours()*60+d.getMinutes(),cur=null;
+  for(var i=0;i<list.length;i++){if(start(list[i].period)+(list[i].span||1)*60>m){cur=list[i];break}}
+  return cur||list[list.length-1];
+}
+function isNow(c){var d=new Date(),m=d.getHours()*60+d.getMinutes(),s=start(c.period);return m>=s-10&&m<s+90}
+function todayView(){
+  var d=new Date(),list=S.classes.filter(function(c){return c.day===d.getDay()}).sort(function(a,b){return a.period-b.period});
+  if(!list.length)return '<p class="empty">今日の授業は登録されていません。<br>「時間割」から追加してください。</p>';
+  var c=list.filter(function(x){return x.id===S.sel})[0]||pick(list),u=url(c.room);
+  var h='<section class="hero"><p class="tag">'+c.period+'限 '+S.times[c.period-1]+'開始</p><p class="name">'+esc(c.name)+'</p><p class="room">'+esc(c.room)+'</p><div class="qr">'+qrSvg(u)+'</div><a class="go" href="'+u+'" target="_blank" rel="noopener">出席ページを開く</a></section><h2>今日の授業</h2>';
+  list.forEach(function(x){h+='<button class="row" data-id="'+x.id+'"'+(x.id===c.id?' aria-current="true"':'')+'><span class="p">'+x.period+'限</span><span class="n">'+esc(x.name)+'</span><span class="r">'+esc(x.room)+'</span></button>'});
+  return h;
+}
+function tableView(){
+  var h='<form id="f"><div class="full"><label for="fn">授業名</label><input id="fn" required></div><div><label for="fd">曜日</label><select id="fd">';
+  [1,2,3,4,5,6,0].forEach(function(i){h+='<option value="'+i+'">'+DAYS[i]+'曜</option>'});
+  h+='</select></div><div><label for="fp">時限</label><select id="fp">';
+  for(var i=1;i<=10;i++)h+='<option value="'+i+'">'+i+'限</option>';
+  h+='</select></div><div><label for="fs">コマ数</label><select id="fs"><option>1</option><option>2</option><option>3</option><option>4</option></select></div><div><label for="fr">教室番号</label><input id="fr" inputmode="numeric" placeholder="例 7203" required></div><button class="add">追加する</button></form>';
+  [1,2,3,4,5,6,0].forEach(function(dy){
+    var l=S.classes.filter(function(c){return c.day===dy}).sort(function(a,b){return a.period-b.period});
+    if(!l.length)return;
+    h+='<h2>'+DAYS[dy]+'曜日</h2>';
+    l.forEach(function(c){h+='<div class="row"><span class="p">'+c.period+'限</span><span class="n">'+esc(c.name)+'</span><span class="r">'+esc(c.room)+'</span><button class="del" data-del="'+c.id+'">削除</button></div>'});
+  });
+  h+='<details><summary>時限の開始時刻</summary><div class="times">';
+  for(var i=0;i<10;i++)h+='<div><label for="tm'+i+'">'+(i+1)+'限</label><input type="time" id="tm'+i+'" data-t="'+i+'" value="'+S.times[i]+'"></div>';
+  return h+'</div></details>';
+}
+function render(){
+  document.getElementById("t-today").setAttribute("aria-pressed",S.view==="today");
+  document.getElementById("t-table").setAttribute("aria-pressed",S.view==="table");
+  document.getElementById("view").innerHTML=S.view==="today"?todayView():tableView();
+}
+document.getElementById("date").textContent=new Date().toLocaleDateString("ja-JP",{month:"long",day:"numeric",weekday:"short"});
+document.getElementById("t-today").onclick=function(){S.view="today";render()};
+document.getElementById("t-table").onclick=function(){S.view="table";render()};
+document.getElementById("view").addEventListener("click",function(e){
+  var r=e.target.closest("[data-id]");if(r){S.sel=r.getAttribute("data-id");render();window.scrollTo(0,0)}
+  var d=e.target.closest("[data-del]");if(d){S.classes=S.classes.filter(function(c){return c.id!==d.getAttribute("data-del")});save();render()}
+});
+document.getElementById("view").addEventListener("submit",function(e){
+  e.preventDefault();
+  S.classes.push({id:"c"+Date.now(),name:fn.value.trim(),day:+fd.value,period:+fp.value,span:+fs.value,room:fr.value.trim()});
+  save();render();
+});
+document.getElementById("view").addEventListener("change",function(e){
+  var t=e.target.getAttribute("data-t");if(t!==null&&e.target.value){S.times[+t]=e.target.value;save()}
+});
+render();
+</script>
+</body>
+</html>
